@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/dgrochowski/test/issues"
   },
-  "homepage": "https://github.com/dgrochowski/test#readme"
+  "homepage": "https://github.com/dgrochowski/test#readme",
+  "dependencies": {
+    "small-validate": "^1.0.3"
+  }
 }
