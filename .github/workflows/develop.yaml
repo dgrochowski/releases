@@ -1,21 +1,18 @@
-name: Node CI
+name: develop
 
 on:
-  pull_request:
+  push:
     branches:
       - develop
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
         node-version: [12.x]
 
     steps:
-
       - uses: actions/checkout@v1
 
       - name: Use Node.js ${{ matrix.node-version }}
@@ -31,37 +28,50 @@ jobs:
           CI: true
 
       - name: zip files
-        run: zip -r build.zip www
+        run: zip -r develop.zip www
 
-      - name: Get previous tag
-        id: previous_tag
+      - name: Get develop Release status
+        id: develop_status
         run: |
-          TAG=`curl --silent "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest" | grep -Po '"tag_name": "\K.*?(?=")'`;
-          if [ $TAG == '' ]; then TAG='1.0.0'; fi
-          echo "::set-output name=tag::${TAG}"
+          STATUS=`curl -s -o /dev/null -w '%{http_code}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/develop"`
+          echo "::set-output name=status::${STATUS}"
 
-      - name: Get next tag
-        id: next_tag
-        run: |
-          TAG=${{ steps.previous_tag.outputs.tag }}
-          TAG_BITS=(${TAG//./ })
-          VNUM1=${TAG_BITS[0]}
-          VNUM2=${TAG_BITS[1]}
-          VNUM3=${TAG_BITS[2]}
-          VNUM3=$((VNUM3+1))
-          echo "::set-output name=tag::${VNUM1}.${VNUM2}.${VNUM3}"
+      - name: Get develop Release info
+        if: steps.develop_status.outputs.status == 200
+        id: develop_tag
+        uses: octokit/request-action@v1.x
+        with:
+          route: GET /repos/:repository/releases/tags/develop
+          repository: ${{ github.repository }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Echo next tag
-        run: echo ${{ steps.next_tag.outputs.tag }}
+      - name: Parse develop Release info
+        if: steps.develop_status.outputs.status == 200
+        id: develop_data
+        uses: gr2m/get-json-paths-action@v1.x
+        with:
+          json: ${{ steps.develop_tag.outputs.data }}
+          id: "id"
 
-      - name: Create Release
+      - name: Delete develop Release
+        if: steps.develop_status.outputs.status == 200
+        uses: octokit/request-action@v1.x
+        with:
+          route: DELETE /repos/:repository/releases/:id
+          repository: ${{ github.repository }}
+          id: ${{ steps.develop_data.outputs.id }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create develop Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.next_tag.outputs.tag }}
-          release_name: ${{ steps.next_tag.outputs.tag }}
+          tag_name: develop
+          release_name: develop
           prerelease: true
 
       - name: Upload Release Asset
@@ -71,6 +81,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build.zip
-          asset_name: build.zip
+          asset_path: ./develop.zip
+          asset_name: develop.zip
           asset_content_type: application/zip
