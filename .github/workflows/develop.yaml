@@ -1,0 +1,76 @@
+name: Node CI
+
+on:
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [12.x]
+
+    steps:
+
+      - uses: actions/checkout@v1
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: npm install, build, and test
+        run: |
+          npm ci
+          npm run build --if-present
+        env:
+          CI: true
+
+      - name: zip files
+        run: zip -r build.zip www
+
+      - name: Get previous tag
+        id: previous_tag
+        run: |
+          TAG=`curl --silent "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest" | grep -Po '"tag_name": "\K.*?(?=")'`;
+          if [ $TAG == '' ]; then TAG='1.0.0'; fi
+          echo "::set-output name=tag::${TAG}"
+
+      - name: Get next tag
+        id: next_tag
+        run: |
+          TAG=${{ steps.previous_tag.outputs.tag }}
+          TAG_BITS=(${TAG//./ })
+          VNUM1=${TAG_BITS[0]}
+          VNUM2=${TAG_BITS[1]}
+          VNUM3=${TAG_BITS[2]}
+          VNUM3=$((VNUM3+1))
+          echo "::set-output name=tag::${VNUM1}.${VNUM2}.${VNUM3}"
+
+      - name: Echo next tag
+        run: echo ${{ steps.next_tag.outputs.tag }}
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.next_tag.outputs.tag }}
+          release_name: ${{ steps.next_tag.outputs.tag }}
+          prerelease: true
+
+      - name: Upload Release Asset
+        id: upload_release_asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build.zip
+          asset_name: build.zip
+          asset_content_type: application/zip
