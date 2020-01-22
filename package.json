@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/dgrochowski/test#readme",
   "dependencies": {
+    "@dgrochowski/private_test": "git+ssh://git@github.com/dgrochowski/private_test.git",
     "small-validate": "^1.0.3"
   }
 }
