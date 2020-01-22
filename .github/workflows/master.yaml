@@ -35,7 +35,7 @@ jobs:
           CI: true
 
       - name: Zip files
-        run: zip -r build.zip www
+        run: zip -r build.zip node_modules
 
       - name: Get previous tag
         id: previous_tag
