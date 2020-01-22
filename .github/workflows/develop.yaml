@@ -1,6 +1,9 @@
 name: develop
 
-on: [pull_request]
+on:
+  push:
+    branches:
+      - develop
 
 jobs:
   build:
@@ -22,20 +25,19 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.id_rsa_short }}
 
-      - name: npm install, build, and test
-        run: |
+      - run: |
           npm ci
           npm run build --if-present
         env:
           CI: true
 
-      - name: zip files
+      - name: Zip files
         run: zip -r develop.zip www
 
       - name: Get develop Release status
         id: develop_status
         run: |
-          STATUS=`curl -s -o /dev/null -w '%{http_code}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/develop"`
+          STATUS=`curl -s -o /dev/null -w '%{http_code}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/develop?access_token=${{ secrets.GITHUB_TOKEN }}"`
           echo "::set-output name=status::${STATUS}"
 
       - name: Get develop Release info
