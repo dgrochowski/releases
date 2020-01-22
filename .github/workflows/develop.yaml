@@ -32,7 +32,7 @@ jobs:
           CI: true
 
       - name: Zip files
-        run: zip -r develop.zip www
+        run: zip -r develop.zip node_modules
 
       - name: Get develop Release status
         id: develop_status
